@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avaliação da aula sobre demências</title>
+<style>
+:root{--c:#6F4A32;--c2:#8B5E3C;--soft:#F3DDD0;--bg:#F7EFEA;--t:#2E2420;--line:#D9C3B6;--grey:#6E6E70;--rose:#C9877A}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--t);font-size:20px;line-height:1.45}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 2px 12px #5a3a2826;border-top:8px solid var(--c2)}
+h1{font-size:24px;margin:0 0 6px;color:var(--c)}
+.bar{height:8px;background:var(--soft);border-radius:8px;margin:14px 0}
+.bar div{height:100%;width:0;background:var(--rose);border-radius:8px;transition:width .3s}
+label.q{display:block;font-weight:bold;margin:6px 0 12px}
+.opt{display:block;border:2px solid var(--line);border-radius:10px;padding:14px;margin:8px 0;cursor:pointer}
+.opt input{margin-right:10px;transform:scale(1.4);accent-color:var(--c2)}
+.opt:has(input:checked){border-color:var(--c2);background:var(--soft)}
+.scale{display:flex;gap:6px}.scale .opt{flex:1;text-align:center;padding:14px 0;margin:0}
+.scale.n11 .opt{padding:12px 0;font-size:17px}
+.scale .opt input{display:none}
+.ends{display:flex;justify-content:space-between;font-size:15px;color:var(--grey);margin-top:6px}
+textarea,input[type=text],input[type=tel],input[type=date],select{width:100%;font-size:20px;padding:12px;border:2px solid var(--line);border-radius:10px;font-family:inherit;background:#fff;color:var(--t)}
+.nav{display:flex;gap:10px;margin-top:20px}
+button{flex:1;font-size:20px;padding:15px;border:0;border-radius:10px;background:var(--c);color:#fff;cursor:pointer}
+button.sec{background:var(--soft);color:var(--t)}
+.hint{font-size:15px;color:var(--grey)}.err{color:#a3262a;font-size:16px;display:none}
+.intro p{margin:0 0 12px}.intro ul{margin:0 0 12px;padding-left:22px}.intro li{margin-bottom:6px}
+.box{background:var(--soft);border-radius:10px;padding:12px 14px;font-size:17px}
+.hp{position:absolute;left:-9999px}
+#ok{display:none}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1 id="titulo">Avaliação da aula sobre demências</h1>
+<div class="bar"><div id="prog"></div></div>
+<form id="f" autocomplete="off" onsubmit="return false"><div id="steps"></div>
+<input class="hp" type="text" name="site" tabindex="-1">
+<div class="err" id="err"></div>
+<div class="nav"><button type="button" class="sec" id="back">Voltar</button><button type="button" id="next">Avançar</button></div>
+</form>
+<div id="ok"><h1>Obrigado! 🤍</h1><p>Sua resposta foi enviada.</p></div>
+</div></div>
+<script>
+// ===== CONFIGURAÇÃO =====
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbyHlJjewe-EMv0HW7edTz3FCYOdvUe77RKANNBxX7D0j1t_gg48DgBJg7LueJ52BzUVlA/exec";
+const AULAS = ["Demências","Outra"];
+const P = new URLSearchParams(location.search);
+const MOMENTO = P.get("momento")==="pre" ? "pre" : "pos";
+const HOJE = new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+
+const INTRO_POS = `
+<p>Olá! Este formulário é voltado a <b>familiares e cuidadores</b> que assistiram à aula sobre demências.</p>
+<p>O objetivo é saber:</p>
+<ul>
+<li>se a aula foi clara e útil para o seu dia a dia;</li>
+<li>o que ficou de aprendizado;</li>
+<li>se houve alguma dificuldade para acessar a aula online;</li>
+<li>quais assuntos vocês gostariam de ver nas próximas aulas.</li>
+</ul>
+<div class="box">Não é uma prova: não existem respostas certas ou erradas. Suas respostas serão usadas apenas para melhorar nossas atividades educativas. Seu nome só será pedido se você quiser que a equipe entre em contato.</div>
+<p class="hint" style="margin-top:12px">Tempo estimado: cerca de 3 minutos.</p>`;
+const INTRO_PRE = `
+<p>Olá! Antes de a aula começar, queremos conhecer um pouco do seu momento como <b>familiar ou cuidador</b>.</p>
+<p>Estas poucas perguntas nos ajudam a ver, depois da aula, o que ficou de aprendizado e se você se sente mais seguro(a) no cuidado.</p>
+<div class="box">Não é uma prova: não existem respostas certas ou erradas, e “não sei” é uma resposta válida. Suas respostas serão usadas apenas para melhorar nossas atividades educativas.</div>
+<p class="hint" style="margin-top:12px">Tempo estimado: 1 a 2 minutos.</p>`;
+
+const CONHECIMENTO = [
+ {k:"conh1",q:"Qual situação indica possível demência, e não apenas envelhecimento normal?",
+  o:["Demorar mais para aprender algo novo","Esquecer uma palavra e lembrar depois (“na ponta da língua”)","Perder a independência em tarefas do dia a dia, como contas e refeições"],certa:2},
+ {k:"conh2",q:"No comprometimento cognitivo leve, a pessoa geralmente:",
+  o:["Tem alteração nos testes de cognição, mas mantém a independência nas atividades diárias","Perde a independência em todas as atividades","Tem demência avançada"],certa:0},
+ {k:"conh3",q:"Na demência vascular, a piora costuma acontecer:",
+  o:["Sempre de forma lenta e igual, sem relação com outros eventos","Em degraus, geralmente após eventos como AVC ou AIT","Apenas depois dos 90 anos"],certa:1},
+ {k:"conh4",q:"Seu familiar deixou de tomar a iniciativa de comer ou de ir ao banheiro. Qual é a explicação e a melhor conduta?",
+  o:["Preguiça; deve-se perguntar “você quer comer?” e esperar a resposta","Perda de iniciativa (lobo frontal); é melhor orientar com clareza, como “está na hora de comer”","Desinteresse por nós; é melhor deixá-lo decidir sozinho"],certa:1},
+ {k:"conh5",q:"Muitas pessoas com demência não reconhecem que têm um problema (anosognosia). Diante disso, o mais adequado é:",
+  o:["Entender que faz parte da doença e evitar discussões e cobranças","Convencê-la com argumentos repetidos até admitir","Concluir que ela está fazendo de propósito"],certa:0}
+];
+
+const Q = [
+ {k:"_intro",t:"intro",opt:true},
+ {k:"data_aula",t:"date",q:"Em que data foi a aula a que você ou seu familiar assistiram?",sub:"Pode ser uma data diferente de hoje. O dia em que você está preenchendo é registrado automaticamente. Se não lembrar, informe uma data aproximada.",pre:P.get("data")},
+ {k:"aula",t:"select",q:"Qual aula você assistiu?",o:AULAS,pre:P.get("aula"),m:"pos"},
+ {k:"parentesco",t:"radio",q:"Qual é a sua relação com a pessoa com demência?",o:["Cônjuge","Filho(a)","Outro familiar","Cuidador(a) contratado(a)","Outro"]},
+ {k:"mora_junto",t:"radio",q:"Você mora com ela?",o:["Sim","Não"]},
+ {k:"acesso",t:"radio",q:"Você conseguiu entrar e assistir à aula sem problemas?",o:["Sim, sem problemas","Entrei, mas com dificuldade (som, imagem ou internet)","Não consegui entrar"],m:"pos"},
+ {k:"acesso_desc",t:"text",q:"O que aconteceu na aula? (conte rapidinho o que foi falado)",show:a=>a.acesso&&!a.acesso.startsWith("Sim"),opt:true,m:"pos"},
+ {k:"dispositivo",t:"radio",q:"Em qual aparelho você assistiu?",o:["Celular em pé","Celular deitado (horizontal)","Computador","Tablet","Outro"],m:"pos"},
+ {k:"saiu",t:"radio",q:"Você ficou até o final da aula?",o:["Sim, assisti do início ao fim","Saí por pouco tempo e voltei","Não fiquei até o final"],m:"pos"},
+ {k:"motivo_saida",t:"radio",q:"Qual foi o motivo?",o:["Precisei atender meu familiar","Estava no horário de trabalho","Problema de internet","Horário ruim","Outro"],show:a=>a.saiu&&!a.saiu.startsWith("Sim"),m:"pos"},
+ {k:"claro",t:"scale",q:"O conteúdo foi apresentado de forma clara e fácil de entender?",lo:"Nada claro",hi:"Muito claro",m:"pos"},
+ {k:"util",t:"scale",q:"O que aprendi será útil na minha rotina de cuidado.",lo:"Discordo totalmente",hi:"Concordo totalmente",m:"pos"},
+ {k:"partes_uteis",t:"check",q:"Quais partes da aula foram mais úteis para você?",o:["Como o cérebro funciona e a função de cada área","Envelhecimento normal e comprometimento cognitivo leve","Tipos de demência","Estágios da doença","Dicas práticas de como falar e agir","Ouvir a experiência de outras famílias","Outro"],opt:true,m:"pos"},
+ {k:"partes_outro",t:"text",q:"Qual outra parte foi útil?",show:a=>(a.partes_uteis||[]).includes("Outro"),opt:true,m:"pos"},
+ {k:"dinamica",t:"radio",q:"Como foi a dinâmica de perguntas (microfones fechados e perguntas na vez)?",o:["Boa, consegui participar","Poderia melhorar","Não participei"],m:"pos"},
+ {k:"dinamica_oque",t:"text",q:"O que poderia melhorar na dinâmica de perguntas?",show:a=>a.dinamica==="Poderia melhorar",opt:true,m:"pos"},
+ {k:"duvidas",t:"scale",q:"Tive oportunidade de tirar minhas dúvidas.",lo:"Discordo totalmente",hi:"Concordo totalmente",m:"pos"},
+ {k:"troca",t:"scale",q:"Ouvir a experiência de outras famílias me ajudou.",lo:"Discordo totalmente",hi:"Concordo totalmente",m:"pos"},
+ ...CONHECIMENTO.map(c=>({k:c.k,t:"radio",q:c.q,o:c.o,sub:"Para vermos o que ficou da aula. Não é uma prova, e “não sei” também ajuda.",nao_sei:true})),
+ {k:"entendo",t:"scale",q:"Hoje, entendo bem por que meu familiar age como age.",lo:"Discordo totalmente",hi:"Concordo totalmente"},
+ {k:"confianca",t:"scale",q:"Hoje, quão seguro(a) você se sente para lidar com mudanças de comportamento do seu familiar?",lo:"Nada seguro(a)",hi:"Muito seguro(a)"},
+ {k:"vai_fazer",t:"area",q:"O que você vai fazer de diferente a partir de hoje?",opt:true,m:"pos"},
+ {k:"melhorar",t:"area",q:"O que faltou ou poderia melhorar nas próximas aulas?",opt:true,m:"pos"},
+ {k:"temas",t:"check",q:"Quais assuntos você gostaria de ver nas próximas aulas?",o:[
+  "Alimentação e suplementação","Atividades para estimular o paciente",
+  "Agitação e agressividade","Irritabilidade e mudanças de humor","Apatia e falta de iniciativa",
+  "Alucinações e ideias fixas (delírios)","Alterações do sono e piora no fim do dia","Repetição de perguntas e falas",
+  "Recusa de banho, remédios e cuidados","Desinibição e comportamentos inadequados",
+  "Cuidar de quem cuida (autocuidado)","Papel e responsabilidades da família","Segurança: dirigir, risco de se perder, quedas",
+  "Tratamento e medicamentos","Prevenção e exames","Higiene e cuidados com a pele","Outro"],opt:true,m:"pos"},
+ {k:"temas_outro",t:"text",q:"Qual outro assunto você gostaria de ver?",show:a=>(a.temas||[]).includes("Outro"),opt:true,m:"pos"},
+ {k:"nps",t:"scale",n:11,q:"De 0 a 10, quanto você recomendaria esta aula a outro familiar ou amigo?",lo:"0 = não recomendaria",hi:"10 = recomendaria muito",m:"pos"},
+ {k:"contato",t:"radio",q:"Você gostaria que nossa equipe entrasse em contato com você?",o:["Sim","Não"],m:"pos"},
+ {k:"nome_contato",t:"text",q:"Seu nome completo",show:a=>a.contato==="Sim",m:"pos"},
+ {k:"nome_paciente",t:"text",q:"Nome completo do paciente",show:a=>a.contato==="Sim",m:"pos"},
+ {k:"tel_contato",t:"tel",q:"Seu telefone com DDD (WhatsApp)",show:a=>a.contato==="Sim",m:"pos",sub:"Usaremos apenas para falar sobre apoio e novas aulas. Ao informar seus dados, você autoriza o contato."}
+];
+const A={};let i=0;const S=document.getElementById("steps");
+const visible=()=>Q.filter(q=>(MOMENTO==="pos"||q.m!=="pos")&&(!q.show||q.show(A)));
+function render(){
+ const v=visible(),q=v[i];
+ let h="";
+ if(q.t==="intro"){h=`<div class="intro">${MOMENTO==="pre"?INTRO_PRE:INTRO_POS}</div>`}
+ else{
+ h=`<label class="q">${q.q}</label>`+(q.sub?`<div class="hint" style="margin-bottom:8px">${q.sub}</div>`:"");
+ const opts=q.nao_sei?[...q.o,"Não sei"]:q.o;
+ if(q.t==="date")h+=`<input id="in" type="date" max="${HOJE}" value="${A[q.k]||q.pre||""}">`;
+ if(q.t==="select")h+=`<select id="in"><option value="">Escolha…</option>${q.o.map(o=>`<option ${(A[q.k]||q.pre)===o?"selected":""}>${o}</option>`).join("")}</select>`;
+ if(q.t==="radio")h+=opts.map(o=>`<label class="opt"><input type="radio" name="in" value="${o}" ${A[q.k]===o?"checked":""}>${o}</label>`).join("");
+ if(q.t==="check")h+=q.o.map(o=>`<label class="opt"><input type="checkbox" name="in" value="${o}" ${(A[q.k]||[]).includes(o)?"checked":""}>${o}</label>`).join("")+`<div class="hint">Pode marcar mais de uma. Opcional.</div>`;
+ if(q.t==="scale"){const n=q.n||5,s=n===11?0:1;h+=`<div class="scale ${n===11?"n11":""}">${Array.from({length:n},(_,j)=>j+s).map(x=>`<label class="opt"><input type="radio" name="in" value="${x}" ${String(A[q.k])===String(x)?"checked":""}>${x}</label>`).join("")}</div><div class="ends"><span>${q.lo}</span><span>${q.hi}</span></div>`}
+ if(q.t==="area")h+=`<textarea id="in" rows="4" maxlength="1000">${A[q.k]||""}</textarea><div class="hint">Opcional</div>`;
+ if(q.t==="text"||q.t==="tel")h+=`<input id="in" type="${q.t}" value="${A[q.k]||""}">`+(q.opt?`<div class="hint">Opcional</div>`:"");
+ }
+ S.innerHTML=h;
+ document.getElementById("prog").style.width=(i/v.length*100)+"%";
+ document.getElementById("back").style.visibility=i?"visible":"hidden";
+ document.getElementById("next").textContent=q.t==="intro"?"Começar":(i===v.length-1?"Enviar":"Avançar");
+ document.getElementById("err").style.display="none";
+ window.scrollTo(0,0);
+}
+function read(q){
+ if(q.t==="intro")return "ok";
+ if(q.t==="radio"||q.t==="scale"){const c=document.querySelector('input[name=in]:checked');return c?c.value:""}
+ if(q.t==="check")return [...document.querySelectorAll('input[name=in]:checked')].map(x=>x.value);
+ return document.getElementById("in").value.trim();
+}
+document.getElementById("next").onclick=()=>{
+ const v=visible(),q=v[i],val=read(q);
+ const er=document.getElementById("err");
+ if((Array.isArray(val)?!val.length:!val)&&!q.opt){er.textContent="Por favor, responda esta pergunta para continuar.";er.style.display="block";return}
+ if(q.t==="date"&&val>HOJE){er.textContent="A data da aula não pode ser no futuro.";er.style.display="block";return}
+ A[q.k]=val;
+ if(i<visible().length-1){i++;render()}else enviar();
+};
+document.getElementById("back").onclick=()=>{if(i>0){i--;render()}};
+const br=d=>d?d.split("-").reverse().join("/"):"";
+async function enviar(){
+ const btn=document.getElementById("next");btn.disabled=true;btn.textContent="Enviando…";
+ let acertos=0;CONHECIMENTO.forEach(c=>{if(A[c.k]===c.o[c.certa])acertos++});
+ const dias=A.data_aula?Math.round((Date.parse(HOJE)-Date.parse(A.data_aula))/86400000):"";
+ const d={...A,data_aula:br(A.data_aula),data_preenchimento:br(HOJE),dias_apos_aula:dias,
+  partes_uteis:(A.partes_uteis||[]).join("; "),temas:(A.temas||[]).join("; "),momento:MOMENTO,acertos:acertos,total_conhecimento:CONHECIMENTO.length,
+  enviado_em:new Date().toISOString(),site:document.querySelector('[name=site]').value};
+ delete d._intro;
+ try{await fetch(ENDPOINT,{method:"POST",mode:"no-cors",body:new URLSearchParams(d)})}catch(e){
+  btn.disabled=false;btn.textContent="Tentar enviar de novo";const er=document.getElementById("err");er.textContent="Não foi possível enviar. Verifique a internet e tente de novo.";er.style.display="block";return}
+ document.getElementById("f").style.display="none";document.getElementById("prog").style.width="100%";
+ document.getElementById("ok").style.display="block";
+}
+render();
+</script>
+</body>
+</html>
